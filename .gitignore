@@ -68,5 +68,6 @@ buildNumber.properties
 document-dir/csv/*
 document-dir/pdf/*
 document-dir/excel/*
+document-dir/upload/*
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,java,maven
