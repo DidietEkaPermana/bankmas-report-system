@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import com.bankmas.report.webapi.model.UploadFile;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 
@@ -27,7 +26,7 @@ public class ListFileResponse {
     public ListFileResponse(UploadFile uploadFile){
         this.id = uploadFile.getId();
         this.fileName = uploadFile.getName();
-        this.reportType = uploadFile.getReportType();
+        this.reportType = uploadFile.getReportType().getName();
         this.status = uploadFile.getStatus().toString();
         this.documentType = uploadFile.getDocumentFileType().toString();
         this.processDatetime = uploadFile.getProcessDatetime();

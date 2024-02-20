@@ -2,6 +2,7 @@ package com.bankmas.report.webapi.controller.file;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 import javax.validation.Valid;
 
@@ -17,10 +18,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bankmas.report.webapi.dto.DataResponse;
+import com.bankmas.report.webapi.dto.IdOnlyResponse;
 import com.bankmas.report.webapi.dto.PaginationResponse;
+import com.bankmas.report.webapi.dto.file.ListFileResponse;
 import com.bankmas.report.webapi.dto.file.SaveFileRequest;
+import com.bankmas.report.webapi.dto.file.SaveFileResponse;
 import com.bankmas.report.webapi.exception.ValidationException;
+import com.bankmas.report.webapi.model.UploadFile;
 import com.bankmas.report.webapi.service.file.FileService;
+
+import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
 @RequestMapping("/api/v1/file")
@@ -30,12 +37,15 @@ public class FileController {
     FileService fileService;
 
     @PostMapping(consumes = "multipart/form-data", produces = "application/json")
-    public ResponseEntity<DataResponse> saveFile(@Valid @ModelAttribute SaveFileRequest request) throws IOException, NoSuchAlgorithmException,ValidationException{
+    @Operation(summary = "Upload file", description = "Upload a file for converting to PDF/EXCEL/CSV")
+    public ResponseEntity<DataResponse<List<SaveFileResponse>>> saveFile(@Valid @ModelAttribute SaveFileRequest request) 
+        throws IOException, NoSuchAlgorithmException,ValidationException{
         return ResponseEntity.ok(fileService.saveFile(request));
     }
 
     @GetMapping(produces = "application/json")
-    public ResponseEntity<PaginationResponse> listFile(
+    @Operation(summary = "List Uploaded File", description = "Get List Uploaded File with status")
+    public ResponseEntity<PaginationResponse<List<ListFileResponse>>> listFile(
                 @RequestParam(required = false, value = "page", defaultValue = "0") Integer page, 
                 @RequestParam(required = false, value = "size", defaultValue = "10") Integer size, 
                 @RequestParam(required = false, value = "status") String status)
@@ -44,17 +54,20 @@ public class FileController {
     }
 
     @GetMapping(value = "/{id}")
-    public ResponseEntity<DataResponse> getFile(@PathVariable("id") String id){
+    @Operation(summary = "Get Detail Uploaded File", description = "Get Detailed Uploaded File with Id")
+    public ResponseEntity<DataResponse<UploadFile>> getFile(@PathVariable("id") String id){
         return ResponseEntity.ok(fileService.getFile(id));
     }
 
     @GetMapping(value = "/download/{id}",produces = "application/octet-stream")
+    @Operation(summary = "Download Converted File", description = "Download Successed Converted File with Id")
     public ResponseEntity<byte[]> downloadFile(@PathVariable("id") String id){
         return fileService.downloadFile(id);
     }
 
     @DeleteMapping(value = "/{id}")
-    public ResponseEntity<DataResponse> deleteFile(@PathVariable("id") String id) throws IOException{
+    @Operation(summary = "Delete Uploaded File", description = "Hard Delete Uploaded File with Id")
+    public ResponseEntity<DataResponse<IdOnlyResponse>> deleteFile(@PathVariable("id") String id) throws IOException{
         return ResponseEntity.ok(fileService.deleteFile(id));
     }
 }

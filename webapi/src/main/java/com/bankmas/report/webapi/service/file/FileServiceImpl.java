@@ -13,7 +13,9 @@ import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -28,14 +30,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.bankmas.report.webapi.config.StorageProperties;
 import com.bankmas.report.webapi.dto.DataResponse;
+import com.bankmas.report.webapi.dto.IdOnlyResponse;
 import com.bankmas.report.webapi.dto.PaginationResponse;
 import com.bankmas.report.webapi.dto.file.ListFileResponse;
 import com.bankmas.report.webapi.dto.file.SaveFileRequest;
+import com.bankmas.report.webapi.dto.file.SaveFileResponse;
 import com.bankmas.report.webapi.dto.kafka.MessageKafkaUpdateStatusFile;
 import com.bankmas.report.webapi.exception.ValidationException;
 import com.bankmas.report.webapi.model.EnumDocumentFileType;
 import com.bankmas.report.webapi.model.EnumUploadFileStatus;
+import com.bankmas.report.webapi.model.ReportType;
 import com.bankmas.report.webapi.model.UploadFile;
+import com.bankmas.report.webapi.repository.ReportTypeRepository;
 import com.bankmas.report.webapi.repository.UploadFileRepository;
 import com.bankmas.report.webapi.service.kafka.KafkaProducer;
 import com.bankmas.report.webapi.util.StringUtil;
@@ -47,41 +53,53 @@ public class FileServiceImpl implements FileService {
     @Autowired
     UploadFileRepository fileRepository;
 
+    @Autowired 
+    ReportTypeRepository reportTypeRepository;
+
+    @Autowired
+    ReportTypeService reportTypeService;
+
     @Autowired
     KafkaProducer kafkaProducer;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public DataResponse saveFile(SaveFileRequest request) throws IOException, NoSuchAlgorithmException,ValidationException {
-        
+    public DataResponse<List<SaveFileResponse>> saveFile(SaveFileRequest request) throws IOException, NoSuchAlgorithmException,ValidationException {
+        List<SaveFileResponse> result = new ArrayList<>();
         for(MultipartFile multipart : request.getFile()){
-            StringBuilder stringBuilder = getLineFromMultipart(multipart);
-
-            //validate file format
             try{
-                objectMapper.readValue(stringBuilder.toString(), List.class);
-            } catch(IOException e){
-                e.printStackTrace();
-                throw new ValidationException("INVALID_FILE_FORMAT");
+                StringBuilder stringBuilder = getLineFromMultipart(multipart);
+
+                //validate file format
+                try{
+                    objectMapper.readValue(stringBuilder.toString(), List.class);
+                } catch(IOException e){
+                    throw new ValidationException("INVALID_FILE_FORMAT");
+                }
+
+                String checksum = StringUtil.generateChecksum(stringBuilder.toString());
+
+                Optional<UploadFile> fileOnProcess = fileRepository.findFirstByDocumentFileTypeAndChecksumOrderByProcessDatetimeDesc(request.getDocumentFileType(), checksum);
+                if(fileOnProcess.isPresent() && !fileOnProcess.get().getStatus().equals(EnumUploadFileStatus.ERROR))
+                    throw new ValidationException("FILE_ON_PROCESS");
+
+                String fileName = StringUtil.generateFilename();
+
+                storeFileToStorage(stringBuilder.toString(), fileName);
+
+                UploadFile uploadFile = storeFileToDatabase(request.getDocumentFileType(), request.getReportType(), checksum, fileName, multipart.getOriginalFilename());
+
+                kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName);
+
+                result.add(SaveFileResponse.builder().fileName(uploadFile.getOriginalFileName()).status("SUCCESS").reason(null).build());
+            } catch(ValidationException|IOException e){
+                result.add(SaveFileResponse.builder().fileName(multipart.getOriginalFilename()).status("FAILED").reason(e.getMessage()).build());
             }
-
-            String checksum = StringUtil.generateChecksum(stringBuilder.toString());
-
-            Optional<UploadFile> fileOnProcess = fileRepository.findFirstByDocumentFileTypeAndChecksumOrderByProcessDatetimeDesc(request.getDocumentFileType(), checksum);
-            if(fileOnProcess.isPresent() && !fileOnProcess.get().getStatus().equals(EnumUploadFileStatus.ERROR))
-                continue;
-
-            String fileName = StringUtil.generateFilename();
-
-            storeFileToStorage(stringBuilder.toString(), fileName);
-
-            UploadFile uploadFile = storeFileToDatabase(request.getDocumentFileType(), request.getReportType(), checksum, fileName, multipart.getOriginalFilename());
-
-            kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName);
+            
         }
 
-        return DataResponse.builder().message("SUCCESS").data(null).build();
+        return new DataResponse<List<SaveFileResponse>>("SUCCESS", result);
     }
 
     private StringBuilder getLineFromMultipart(MultipartFile multipartFile) throws IOException {
@@ -100,8 +118,12 @@ public class FileServiceImpl implements FileService {
 
     @Transactional(transactionManager = "transactionManager")
     private UploadFile storeFileToDatabase(
-            EnumDocumentFileType enumDocumentFileType, String reportType, 
+            EnumDocumentFileType enumDocumentFileType, String reportTypeName, 
             String checksum, String fileName, String originalFilename) {
+        
+        ReportType reportType = reportTypeRepository.findFirstByName(reportTypeName.toUpperCase(Locale.ROOT))
+            .orElseThrow(() -> new ValidationException("INVALID_REPORT_TYPE"));
+
         UploadFile uploadFile = UploadFile
             .builder()
             .name(fileName)
@@ -147,7 +169,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public PaginationResponse listFile(Integer page, Integer size, String status) {
+    public PaginationResponse<List<ListFileResponse>> listFile(Integer page, Integer size, String status) {
         Page<UploadFile> files = Page.empty();
         if(status != null){
             try{
@@ -159,17 +181,17 @@ public class FileServiceImpl implements FileService {
         else{
             files = fileRepository.findAll(PageRequest.of(page, size).withSort(Direction.DESC, "processDatetime"));
         }
-        return PaginationResponse.builder()
-            .message("SUCCESS")
-            .data(files.getContent().stream().map(s->new ListFileResponse(s)).collect(Collectors.toList()))
-            .page(page)
-            .totalPages(files.getTotalPages())
-            .totalElements(files.getTotalElements())
-            .build();
+        return new PaginationResponse<List<ListFileResponse>>(
+            "SUCCESS",
+            files.getContent().stream().map(s->new ListFileResponse(s)).collect(Collectors.toList()),
+            page,
+            files.getTotalPages(),
+            files.getTotalElements()
+        );
     }
 
     @Override
-    public DataResponse getFile(String id){
+    public DataResponse<UploadFile> getFile(String id){
         if(StringUtil.isNull(id))
             throw new ValidationException("BAD_REQUEST");
         
@@ -178,7 +200,7 @@ public class FileServiceImpl implements FileService {
         if(optional.isPresent()) {
             UploadFile file = optional.get();
             
-            return DataResponse.builder().message("SUCCESS").data(file).build();
+            return new DataResponse<UploadFile>("SUCCESS",file);
             
         }
         throw new ValidationException("FILE_NOT_FOUND");
@@ -186,7 +208,7 @@ public class FileServiceImpl implements FileService {
 
     @Transactional(transactionManager = "transactionManager")
     @Override
-    public DataResponse deleteFile(String id) throws IOException {
+    public DataResponse<IdOnlyResponse> deleteFile(String id) throws IOException {
         if(StringUtil.isNull(id))
             throw new ValidationException("BAD_REQUEST");
 
@@ -203,7 +225,7 @@ public class FileServiceImpl implements FileService {
                 
 
                 fileRepository.deleteById(id);
-                return DataResponse.builder().message("SUCCESS").data(null).build();
+                return new DataResponse<IdOnlyResponse>("SUCCESS", new IdOnlyResponse(id));
             }
             else{
                 throw new ValidationException("FILE_STILL_PROCESSING");

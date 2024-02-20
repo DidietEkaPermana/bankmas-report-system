@@ -65,4 +65,8 @@ buildNumber.properties
 .history
 .ionide
 
+document-dir/csv/*
+document-dir/pdf/*
+document-dir/excel/*
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,java,maven

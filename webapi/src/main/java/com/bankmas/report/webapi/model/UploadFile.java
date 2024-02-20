@@ -8,6 +8,8 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -34,8 +36,9 @@ public class UploadFile {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "report_type")
-    private String reportType;
+    @ManyToOne
+    @JoinColumn(name = "report_type_id")
+    private ReportType reportType;
 
     @Column(name = "document_file_type", nullable = false)
     @Enumerated(value = EnumType.STRING)

@@ -4,8 +4,14 @@ import lombok.Builder;
 import lombok.Data;
 
 @Data
-@Builder
-public class DataResponse {
+public class DataResponse<T> {
     private String message;
-    private Object data;
+    private T data;
+
+    public DataResponse(String message, T data) {   
+        this.message = message;
+        this.data = data;
+    }
+
+    public DataResponse() {}
 }
