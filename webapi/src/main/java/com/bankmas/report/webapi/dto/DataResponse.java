@@ -1,6 +1,5 @@
 package com.bankmas.report.webapi.dto;
 
-import lombok.Builder;
 import lombok.Data;
 
 @Data

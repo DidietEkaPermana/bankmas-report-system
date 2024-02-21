@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -46,6 +47,17 @@ public class ReportTypeServiceImpl implements ReportTypeService {
     ReportTypeFieldJsonRepository reportTypeFieldJsonRepository;
 
     @Override
+    @Cacheable(cacheNames = "reportTypeFieldJsons", key = "#id", unless = "#result == null")
+    public List<DetailReportTypeResponse.JsonField> getReportTypeFieldJsons(String id) {
+        if(StringUtil.isNull(id))
+            throw new ValidationException("BAD_REQUEST");
+        
+        ReportType reportType = reportTypeRepository.findById(id).orElseThrow(() -> new ValidationException("REPORT_TYPE_NOT_EXISTS"));
+        return new DetailReportTypeResponse(reportType).getJsonFields();
+    }
+
+
+    @Override
     @Cacheable(cacheNames = "reportTypes")
     public DataResponse<List<DetailReportTypeResponse>> listReportType() {
         List<ReportType> reportTypes = reportTypeRepository.findAll(Sort.by(Direction.ASC, "name"));
@@ -71,6 +83,9 @@ public class ReportTypeServiceImpl implements ReportTypeService {
     @Transactional(transactionManager = "transactionManager")
     @CacheEvict(cacheNames = "reportTypes", allEntries = true)
     public DataResponse<IdOnlyResponse> createReportType(UpsertReportTypeRequest request) {
+        if(request.getJsonFields() == null || request.getJsonFields().isEmpty())
+            throw new ValidationException("BAD_REQUEST");
+        
         Optional<ReportType> optional = reportTypeRepository.findFirstByName(request.getName().toUpperCase(Locale.ROOT));
         if(optional.isPresent())
             throw new ValidationException("NAME_ALREADY_EXISTS");
@@ -98,8 +113,12 @@ public class ReportTypeServiceImpl implements ReportTypeService {
 
     @Override
     @Transactional(transactionManager = "transactionManager")
-    @CacheEvict(cacheNames = "reportTypes", allEntries = true)
+    @Caching(evict = { @CacheEvict(cacheNames = "reportTypes", key = "#id"),
+			@CacheEvict(cacheNames = "reportTypes", allEntries = true) })
     public DataResponse<IdOnlyResponse> updateReportType(String id, UpsertReportTypeRequest request) {
+        if(request.getJsonFields() == null || request.getJsonFields().isEmpty())
+            throw new ValidationException("BAD_REQUEST");
+
         if(StringUtil.isNull(id))
             throw new ValidationException("BAD_REQUEST");
 
@@ -144,7 +163,7 @@ public class ReportTypeServiceImpl implements ReportTypeService {
             map.put(fieldJson.getName(), "STRING");
         }
         
-        List<Map<String,String>> result = new ArrayList<>();
+        List<Map<String,String>> result = List.of(map);
 
         return ResponseEntity.ok()
             .header("Content-Disposition", "attachment; filename=" + reportType.getName()+".json")

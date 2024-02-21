@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +38,7 @@ import com.google.common.collect.Lists;
 import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Header;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
@@ -170,9 +172,9 @@ public class FileServiceImpl implements FileService{
             if (listMap.size() == 0)
                 return;
 
-            // Extract the headers from the first map in the list.
-            String[] headers = listMap.get(0).keySet().toArray(new String[0]);
 
+            Set<String> headers = message.fieldJsons.keySet();
+            
             // Generate a unique file name for the PDF document.
             String fileName = message.fileName + ".pdf";
 
@@ -180,13 +182,8 @@ public class FileServiceImpl implements FileService{
             Path filePath = Path.of(StorageProperties.getPdfLocation() + fileName);
 
             try (OutputStream outputStream = Files.newOutputStream(filePath)) {
-                // Create a new iText Document and associate it with the output stream.
-                Document document = new Document();
-                PdfWriter.getInstance(document, outputStream);
 
-                document.open();
-
-                PdfPTable pTable = new PdfPTable(headers.length);
+                PdfPTable pTable = new PdfPTable(headers.size());
 
                 // Add the headers to the table.
                 for (String header : headers) 
@@ -194,18 +191,32 @@ public class FileServiceImpl implements FileService{
                 
 
                 // Iterate over the list of maps starting from the second map.
-                for (int i = 1; i < listMap.size(); i++) {
+                for (int i = 0; i < listMap.size(); i++) {
                     Map<String, Object> map = listMap.get(i);
-                    pTable.addCell(map.get("wilayah").toString());
-                    pTable.addCell(map.get("tanggal").toString());
+                    Set<String> keySet = map.keySet();
+                    if(headers.stream().noneMatch(key ->keySet.contains(key))){
+                        throw new ValidationException("INVALID_HEADER");
+                    }
+                    
+                    for(String header : headers){
+                        if(message.fieldJsons.get(header).equals("TEXT")){
+                            pTable.addCell(map.get(header).toString());
+                        } else{
+                            // If the header is "gambar", download the image using the downloadImage method and add it to the table as an image cell.
+                            byte[] downloadImage = downloadImage(map.get(header).toString());
+                            Image image = Image.getInstance(downloadImage);
+                            PdfPCell imageCell = new PdfPCell(image, true);
+                            pTable.addCell(imageCell);
+                        }
+                    }
 
-                    // If the header is "gambar", download the image using the downloadImage method and add it to the table as an image cell.
-                    byte[] downloadImage = downloadImage(map.get("gambar").toString());
-                    Image image = Image.getInstance(downloadImage);
-                    PdfPCell imageCell = new PdfPCell(image, true);
-                    pTable.addCell(imageCell);
+                    
                 }
+                // Create a new iText Document and associate it with the output stream.
+                Document document = new Document();
+                PdfWriter.getInstance(document, outputStream);
 
+                document.open();
                 document.add(pTable);
                 document.close();
             }
@@ -216,7 +227,7 @@ public class FileServiceImpl implements FileService{
             e.printStackTrace();
 
             // Update the file status to "ERROR" using the KafkaProducer.
-            kafkaProducer.updateStatusFile(message.id, EnumUploadFileStatus.ERROR, null, null);
+            kafkaProducer.updateStatusFile(message.id, EnumUploadFileStatus.ERROR, null, null, e.getMessage());
         }
     }
 

@@ -11,6 +11,8 @@ import com.bankmas.report.webapi.dto.file.UpsertReportTypeRequest;
 import com.bankmas.report.webapi.dto.file.DetailReportTypeResponse;
 
 public interface ReportTypeService {
+
+    public List<DetailReportTypeResponse.JsonField> getReportTypeFieldJsons(String id);
     public DataResponse<List<DetailReportTypeResponse>> listReportType();
     public DataResponse<DetailReportTypeResponse> getReportType(String id);
 

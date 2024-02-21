@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -74,54 +75,59 @@ public class FileServiceImpl implements FileService {
             if (listMap.size() == 0)
                 return;
 
-            String[] headers = listMap.get(0).keySet().stream().toArray(String[]::new);
+            Set<String> headers = message.fieldJsons.keySet();
 
             String fileName = message.fileName + ".xlsx";
 
 
             XSSFWorkbook workbook = new XSSFWorkbook();
             XSSFSheet sheet = workbook.createSheet("data");
-            
-            sheet.setColumnWidth(2, 35*256);
 
             // add headers
             XSSFRow headerRow = sheet.createRow(0);
-            for (int i = 0; i < headers.length; i++) {
-                headerRow.createCell(i).setCellValue(headers[i]);
+            int i = 0;
+            for (String header : headers) {
+                headerRow.createCell(i++).setCellValue(header);
             }
-
-            listMap.remove(0);
             int totalRow = listMap.size();
-            for(int i = 0; i < totalRow; i++) {
+            for(i = 0; i < totalRow; i++) {
                 Map<String, Object> map = listMap.get(i);
-                
-                byte[] data = downloadImage(map.get("gambar").toString());
-                
-                ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+                Set<String> keySet = map.keySet();
+                if(headers.stream().noneMatch(key ->keySet.contains(key))){
+                    throw new ValidationException("INVALID_HEADER");
+                }
 
-                BufferedImage bufferedImage = ImageIO.read(byteArrayInputStream);
-
-                int height = bufferedImage.getHeight();
-                
-                byteArrayInputStream.close();
-                
                 XSSFRow row = sheet.createRow(i);
-                row.setHeightInPoints(height);
+                int j = 0;
+                for(String header : headers) {
+                    if(message.fieldJsons.get(header).equals("TEXT")){
+                        row.createCell(j++).setCellValue(map.get(header).toString());
+                    } else{
+                        sheet.setColumnWidth(2, 40*256);
+                        byte[] data = downloadImage(map.get(header).toString());
+                        
+                        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
 
-                row.createCell(0).setCellValue(map.get("wilayah").toString());
-                row.createCell(1).setCellValue(map.get("tanggal").toString());
+                        BufferedImage bufferedImage = ImageIO.read(byteArrayInputStream);
 
-                XSSFCell cell = row.createCell(2);
-                
-                int pictureIndex = sheet.getWorkbook().addPicture(data, XSSFWorkbook.PICTURE_TYPE_PNG);
-                // Create anchor that positions the image
-                XSSFClientAnchor anchor = new XSSFClientAnchor(0, 0, 0, 0, cell.getColumnIndex(), cell.getRowIndex(), cell.getColumnIndex() + 1, cell.getRowIndex() + 1);
+                        int height = bufferedImage.getHeight();
+                        
+                        byteArrayInputStream.close();
+                        row.setHeightInPoints(height);
 
-                // Create drawing patriarch
-                XSSFDrawing drawing = sheet.createDrawingPatriarch();
+                        XSSFCell cell = row.createCell(j++);
+                        
+                        int pictureIndex = sheet.getWorkbook().addPicture(data, XSSFWorkbook.PICTURE_TYPE_PNG);
+                        // Create anchor that positions the image
+                        XSSFClientAnchor anchor = new XSSFClientAnchor(0, 0, 0, 0, cell.getColumnIndex(), cell.getRowIndex(), cell.getColumnIndex() + 1, cell.getRowIndex() + 1);
 
-                // Add picture to workbook and anchor it at specified cell
-                drawing.createPicture(anchor, pictureIndex);
+                        // Create drawing patriarch
+                        XSSFDrawing drawing = sheet.createDrawingPatriarch();
+
+                        // Add picture to workbook and anchor it at specified cell
+                        drawing.createPicture(anchor, pictureIndex);
+                    }
+                }
                 
             }
 
@@ -135,7 +141,7 @@ public class FileServiceImpl implements FileService {
         } catch (Exception e) {
             e.printStackTrace();
             //update status to error
-            kafkaProducer.updateStatusFile(message.id, EnumUploadFileStatus.ERROR, null, null);
+            kafkaProducer.updateStatusFile(message.id, EnumUploadFileStatus.ERROR, null, null, e.getMessage());
         }
 
 

@@ -13,13 +13,17 @@ public class KafkaProducer {
 
     @Autowired
     private KafkaTemplate<String, MessageKafkaUpdateStatusFile> kafkaTemplate;
-
     public void updateStatusFile(String id, EnumUploadFileStatus status, String formatedFileName, String finishDatetime) {
+        updateStatusFile(id, status, formatedFileName, finishDatetime, null);
+    }
+
+    public void updateStatusFile(String id, EnumUploadFileStatus status, String formatedFileName, String finishDatetime, String reason) {
         MessageKafkaUpdateStatusFile message = MessageKafkaUpdateStatusFile.builder()
                .id(id)
                .status(status)
                .formatedFileName(formatedFileName)
                .finishDatetime(finishDatetime)
+               .reason(reason)
                .build();
         kafkaTemplate.send(UPDATE_STATUS_TOPIC, message);
     }

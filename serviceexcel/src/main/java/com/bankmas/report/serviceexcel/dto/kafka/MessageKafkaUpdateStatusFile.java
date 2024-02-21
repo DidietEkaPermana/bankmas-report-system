@@ -12,4 +12,5 @@ public class MessageKafkaUpdateStatusFile {
     private EnumUploadFileStatus status;
     private String formatedFileName;
     private String finishDatetime;
+    private String reason;
 }

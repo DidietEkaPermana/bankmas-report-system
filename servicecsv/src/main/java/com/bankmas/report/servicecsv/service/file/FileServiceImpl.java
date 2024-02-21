@@ -54,7 +54,7 @@ public class FileServiceImpl implements FileService{
             if(listMap.size() == 0)
                 return;
 
-            Set<String> headers = listMap.get(0).keySet();
+            Set<String> headers = message.fieldJsons.keySet();
 
             String fileName = message.fileName + ".csv";
 
@@ -66,6 +66,10 @@ public class FileServiceImpl implements FileService{
             writer.writeNext(headers.toArray(new String[headers.size()]));
 
             for(Map<String, Object> map : listMap) {
+                Set<String> keySet = map.keySet();
+                if(headers.stream().noneMatch(key ->keySet.contains(key))){
+                    throw new ValidationException("INVALID_HEADER");
+                }
                 String[] values = new String[headers.size()];
                 int i = 0;
                 for(String header : headers) {

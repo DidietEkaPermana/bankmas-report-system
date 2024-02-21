@@ -15,6 +15,8 @@ import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.redis.core.RedisHash;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -38,10 +40,12 @@ public class ReportType {
 
     @CreationTimestamp
     @Column(name = "created_datetime", nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'")
     private LocalDateTime createdDatetime;
 
     @UpdateTimestamp
     @Column(name = "updated_datetime")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'")
     private LocalDateTime updatedDatetime;
 
     @OneToMany(mappedBy="reportType")

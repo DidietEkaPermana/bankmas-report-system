@@ -20,10 +20,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bankmas.report.webapi.dto.DataResponse;
 import com.bankmas.report.webapi.dto.IdOnlyResponse;
 import com.bankmas.report.webapi.dto.PaginationResponse;
+import com.bankmas.report.webapi.dto.file.DetailUploadFileResponse;
 import com.bankmas.report.webapi.dto.file.ListFileResponse;
 import com.bankmas.report.webapi.dto.file.SaveFileRequest;
 import com.bankmas.report.webapi.dto.file.SaveFileResponse;
 import com.bankmas.report.webapi.exception.ValidationException;
+import com.bankmas.report.webapi.model.EnumUploadFileStatus;
 import com.bankmas.report.webapi.model.UploadFile;
 import com.bankmas.report.webapi.service.file.FileService;
 
@@ -48,14 +50,14 @@ public class FileController {
     public ResponseEntity<PaginationResponse<List<ListFileResponse>>> listFile(
                 @RequestParam(required = false, value = "page", defaultValue = "0") Integer page, 
                 @RequestParam(required = false, value = "size", defaultValue = "10") Integer size, 
-                @RequestParam(required = false, value = "status") String status)
+                @RequestParam(required = false, value = "status") EnumUploadFileStatus status)
         {
         return ResponseEntity.ok(fileService.listFile(page, size, status));
     }
 
     @GetMapping(value = "/{id}")
     @Operation(summary = "Get Detail Uploaded File", description = "Get Detailed Uploaded File with Id")
-    public ResponseEntity<DataResponse<UploadFile>> getFile(@PathVariable("id") String id){
+    public ResponseEntity<DataResponse<DetailUploadFileResponse>> getFile(@PathVariable("id") String id){
         return ResponseEntity.ok(fileService.getFile(id));
     }
 

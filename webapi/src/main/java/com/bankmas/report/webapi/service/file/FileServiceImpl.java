@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -32,6 +33,8 @@ import com.bankmas.report.webapi.config.StorageProperties;
 import com.bankmas.report.webapi.dto.DataResponse;
 import com.bankmas.report.webapi.dto.IdOnlyResponse;
 import com.bankmas.report.webapi.dto.PaginationResponse;
+import com.bankmas.report.webapi.dto.file.DetailReportTypeResponse;
+import com.bankmas.report.webapi.dto.file.DetailUploadFileResponse;
 import com.bankmas.report.webapi.dto.file.ListFileResponse;
 import com.bankmas.report.webapi.dto.file.SaveFileRequest;
 import com.bankmas.report.webapi.dto.file.SaveFileResponse;
@@ -40,6 +43,7 @@ import com.bankmas.report.webapi.exception.ValidationException;
 import com.bankmas.report.webapi.model.EnumDocumentFileType;
 import com.bankmas.report.webapi.model.EnumUploadFileStatus;
 import com.bankmas.report.webapi.model.ReportType;
+import com.bankmas.report.webapi.model.ReportTypeFieldJson;
 import com.bankmas.report.webapi.model.UploadFile;
 import com.bankmas.report.webapi.repository.ReportTypeRepository;
 import com.bankmas.report.webapi.repository.UploadFileRepository;
@@ -65,6 +69,7 @@ public class FileServiceImpl implements FileService {
     ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
+    @Transactional(transactionManager = "transactionManager")
     public DataResponse<List<SaveFileResponse>> saveFile(SaveFileRequest request) throws IOException, NoSuchAlgorithmException,ValidationException {
         List<SaveFileResponse> result = new ArrayList<>();
         for(MultipartFile multipart : request.getFile()){
@@ -72,11 +77,15 @@ public class FileServiceImpl implements FileService {
                 StringBuilder stringBuilder = getLineFromMultipart(multipart);
 
                 //validate file format
+                List<Map<String, Object>> listMap = new ArrayList<>();
                 try{
-                    objectMapper.readValue(stringBuilder.toString(), List.class);
+                    listMap = objectMapper.readValue(stringBuilder.toString(), List.class);
                 } catch(IOException e){
                     throw new ValidationException("INVALID_FILE_FORMAT");
                 }
+
+                if(listMap.size() == 0)
+                    throw new ValidationException("FILE_EMPTY");
 
                 String checksum = StringUtil.generateChecksum(stringBuilder.toString());
 
@@ -90,10 +99,14 @@ public class FileServiceImpl implements FileService {
 
                 UploadFile uploadFile = storeFileToDatabase(request.getDocumentFileType(), request.getReportType(), checksum, fileName, multipart.getOriginalFilename());
 
-                kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName);
+                List<DetailReportTypeResponse.JsonField> fieldJsons = reportTypeService.getReportTypeFieldJsons(uploadFile.getReportType().getId());
+
+
+                kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName, fieldJsons);
 
                 result.add(SaveFileResponse.builder().fileName(uploadFile.getOriginalFileName()).status("SUCCESS").reason(null).build());
-            } catch(ValidationException|IOException e){
+            } catch(Exception e){
+                e.printStackTrace();
                 result.add(SaveFileResponse.builder().fileName(multipart.getOriginalFilename()).status("FAILED").reason(e.getMessage()).build());
             }
             
@@ -169,11 +182,11 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public PaginationResponse<List<ListFileResponse>> listFile(Integer page, Integer size, String status) {
+    public PaginationResponse<List<ListFileResponse>> listFile(Integer page, Integer size, EnumUploadFileStatus status) {
         Page<UploadFile> files = Page.empty();
         if(status != null){
             try{
-                files = fileRepository.findAllByStatus(EnumUploadFileStatus.valueOf(status), PageRequest.of(page, size).withSort(Direction.DESC, "processDatetime"));
+                files = fileRepository.findAllByStatus(status, PageRequest.of(page, size).withSort(Direction.DESC, "processDatetime"));
             } catch (IllegalArgumentException e) {
                 //do nothing
             }
@@ -191,7 +204,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public DataResponse<UploadFile> getFile(String id){
+    public DataResponse<DetailUploadFileResponse> getFile(String id){
         if(StringUtil.isNull(id))
             throw new ValidationException("BAD_REQUEST");
         
@@ -200,7 +213,7 @@ public class FileServiceImpl implements FileService {
         if(optional.isPresent()) {
             UploadFile file = optional.get();
             
-            return new DataResponse<UploadFile>("SUCCESS",file);
+            return new DataResponse<DetailUploadFileResponse>("SUCCESS",new DetailUploadFileResponse(file));
             
         }
         throw new ValidationException("FILE_NOT_FOUND");
@@ -235,6 +248,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    @Transactional(transactionManager = "transactionManager")
     public ResponseEntity<byte[]> downloadFile(String id) {
         if(StringUtil.isNull(id))
             throw new ValidationException("BAD_REQUEST");
