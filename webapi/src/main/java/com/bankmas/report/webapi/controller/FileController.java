@@ -1,13 +1,8 @@
 package com.bankmas.report.webapi.controller;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -26,15 +21,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.bankmas.report.webapi.dto.FileCreateUpdateResponse;
+import com.bankmas.report.webapi.dto.FileDescription;
 import com.bankmas.report.webapi.dto.FileListResponse;
 import com.bankmas.report.webapi.dto.FileResponse;
 import com.bankmas.report.webapi.dto.PagingRequest;
-import com.bankmas.report.webapi.dto.UploadRequest;
 import com.bankmas.report.webapi.model.MFile;
 import com.bankmas.report.webapi.service.FileService;
-import com.bankmas.report.webapi.service.ReportBaseService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/file")
@@ -42,12 +34,6 @@ public class FileController {
 
 	@Autowired
 	private FileService fileService;
-	
-	@Autowired
-	private ReportBaseService reportBaseService;
-	
-	@Autowired
-	private ObjectMapper objectMapper;
 	
 	@GetMapping
     public String test() {
@@ -82,11 +68,6 @@ public class FileController {
 	@GetMapping("/download/{id}")
     public ResponseEntity<Resource> download(@PathVariable("id") String id) {
         MFile fileDetail = fileService.findFileById(id);
-        
-//        return ResponseEntity.ok()
-//                .header(HttpHeaders.CONTENT_DISPOSITION,
-//                        "attachment; filename=\"" + file.getFileName() + "\"")
-//                .body(new ByteArrayResource(file.getData()));
         File file = new File(fileDetail.getPath());
         
         // Check if the file exists
@@ -113,23 +94,20 @@ public class FileController {
 		FileCreateUpdateResponse response = new FileCreateUpdateResponse();
 		
 		try {
-			//response = fileService.upload(files);
 			response = fileService.uploadAndSend(files);
-//			for (MultipartFile file : files) {
-//				List<UploadRequest> objects = objectMapper.readValue(file.getInputStream(), new TypeReference<List<UploadRequest>>() {});
-//				
-//				for (UploadRequest obj : objects) {
-//					System.out.println(obj.getWilayah());
-//					System.out.println(obj.getTanggal());
-//	                System.out.println(obj.getGambar());
-//	            }
-//				
-//				String jasperName = "/rptFile.jasper";
-//				Map<String, Object> parameters = new HashMap<>();
-//				
-//				byte[] test = reportBaseService.doExportXlsx(jasperName, objects, parameters);
-//				byte[] test2 = reportBaseService.doExportCsv(objects);
-//			}
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+	
+	@PostMapping(path="/upload-by-type", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FileCreateUpdateResponse> uploadFileByType(@RequestParam("files") MultipartFile[] files, @RequestParam("fileDescription") String fileDescription) {
+		FileCreateUpdateResponse response = new FileCreateUpdateResponse();
+		
+		try {
+			response = fileService.uploadByType(files, fileDescription);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

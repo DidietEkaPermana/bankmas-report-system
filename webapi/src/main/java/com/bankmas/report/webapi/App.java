@@ -8,12 +8,10 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 @SpringBootApplication
-//@EnableCaching
 public class App 
 {
 	private static final String TEMP_DIRECTORY = "export.directory";

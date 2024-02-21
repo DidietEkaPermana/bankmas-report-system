@@ -32,11 +32,13 @@ import com.bankmas.report.webapi.common.FileUtil;
 import com.bankmas.report.webapi.common.MapUtil;
 import com.bankmas.report.webapi.common.StringUtil;
 import com.bankmas.report.webapi.dto.FileCreateUpdateResponse;
+import com.bankmas.report.webapi.dto.FileDescription;
 import com.bankmas.report.webapi.dto.FileListResponse;
 import com.bankmas.report.webapi.dto.FileResponse;
 import com.bankmas.report.webapi.dto.PagingRequest;
 import com.bankmas.report.webapi.dto.UploadRequest;
 import com.bankmas.report.webapi.model.MFile;
+import com.bankmas.report.webapi.model.MFileCategory;
 import com.bankmas.report.webapi.repository.FileRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +53,9 @@ public class FileServiceImpl implements FileService {
 	
 	@Autowired
 	private FileRepository fileRepository;
+	
+	@Autowired
+	private FileCategoryService fileCategoryService;
 	
 	@Autowired
 	private KafkaProducerService kafkaProducerService;
@@ -132,17 +137,24 @@ public class FileServiceImpl implements FileService {
 	@SneakyThrows
 	@Override
 	public void deleteFile(String id) {
-		boolean exists = fileRepository.existsById(id);		
-		
-		if (!exists) {
-			throw new IllegalStateException(
-		              "file with id" + id + " not exist");
+		if (id == null) {
+			throw new IllegalStateException(id + " is null");
 		}
-		
-		fileRepository.deleteById(id);
-		
-//		File myObj = new File("filename.txt"); 
-//		myObj.delete();
+		else {
+			Optional<MFile> obj = fileRepository.findById(id);	
+			
+			if (obj.isPresent()) {
+				fileRepository.deleteById(id);
+				
+				if (obj.get().getPath() != null) {
+					Files.deleteIfExists(Paths.get(obj.get().getPath()));
+				}
+			}
+			else {
+				throw new IllegalStateException(
+			              "file with id" + id + " not exist");
+			}
+		}
 	}
 
 	@Override
@@ -166,18 +178,16 @@ public class FileServiceImpl implements FileService {
 	}
 	
 	@Transactional(transactionManager = "transactionManager")
-    @SneakyThrows
     @Override
     public void updateFile(String id, String status) {
         Optional<MFile> findIdExistingFile = fileRepository.findById(id);
         Timestamp now = DateUtil.getTodayDate();
         
-        if (!findIdExistingFile.isEmpty()) {
-        	findIdExistingFile.get().setStatus(status);
-        	findIdExistingFile.get().setUpdatedAt(now);
+        findIdExistingFile.get().setStatus(status);
+    	findIdExistingFile.get().setChecksumFile2(null);
+    	findIdExistingFile.get().setUpdatedAt(now);
 
-        	fileRepository.save(findIdExistingFile.get());
-        }
+    	fileRepository.save(findIdExistingFile.get());
     }
 
 	@Override
@@ -295,8 +305,6 @@ public class FileServiceImpl implements FileService {
 			Path path = Paths.get(filePath);
             Files.write(path, detail.getData2());
             
-            //byte[] byteReport = Files.readAllBytes(file.toPath());
-            
 			List<UploadRequest> objects = objectMapper.readValue(file, new TypeReference<List<UploadRequest>>() {});
 			
 			for (UploadRequest obj : objects) {
@@ -308,5 +316,84 @@ public class FileServiceImpl implements FileService {
 		catch (IOException e) {
 			throw new IOException(e.getMessage(), e);
 		}
+	}
+
+	@Override
+	public FileCreateUpdateResponse uploadByType(MultipartFile[] files, String fileDescription)
+			throws Exception {
+		List<FileResponse> fileList = new ArrayList<>();
+		
+		for (MultipartFile file : files) {
+			byte[] data = file.getBytes();
+			String status = "Not Yet Processed";
+			Timestamp now = DateUtil.getTodayDate();
+			
+			FileDescription fd = objectMapper.readValue(fileDescription, FileDescription.class);
+			
+			//pdf, csv, xlsx
+			String format = fd.getFormat();
+			//monthly, weekly, biweekly
+			String type = fd.getType();
+			
+			List<MFileCategory> mfc = fileCategoryService.getByCategory(type);
+			
+			if (mfc.isEmpty()) {
+				throw new Exception("Category : " + type + " not found");
+			}
+			
+			String checksumFile2 = FileUtil.calculateChecksum(data);
+			
+			List<MFile> tmp = fileRepository.findByChecksumFile2(checksumFile2);
+			
+			if (!tmp.isEmpty()) {
+				throw new Exception("There in progress file");
+			}
+			
+			String topic = "";
+			switch (format) {
+			case "pdf" :
+				topic = "file-topic-pdf";
+				break;
+			case "xlsx" : 
+				topic = "file-topic-excel";
+				break;
+			case "csv" :
+				topic = "file-topic-csv";
+				break;
+			}
+
+			MFile fileDto = MFile.builder()
+					.fileName(null)
+					.type(format)
+					.category(null)
+					.data(null)
+					.data2(data)
+					.status(status)
+					.checksumFile(null)
+					.checksumFile2(checksumFile2)
+					.createdAt(now)
+					.updatedAt(null)
+					.mFileCategory(mfc.get(0))
+					.build();
+			
+			MFile saveFile = fileRepository.save(fileDto);
+			
+			FileResponse dtoCsv = FileResponse.builder()
+					.id(saveFile.getId())
+					.fileName(saveFile.getFileName())
+					.status(saveFile.getStatus())
+					.createdAt(saveFile.getCreatedAt())
+					.build();
+
+			fileList.add(dtoCsv);
+			
+			//kafkaProducerService.sendMessage(topic, saveFile.getId());
+			//kafkaProducerService.sendMessage(topic, "not-found");
+        }
+		
+		return FileCreateUpdateResponse.builder()
+                .message("success insert")
+                .files(fileList)
+                .build();
 	}
 }

@@ -125,7 +125,6 @@ public class ReportBaseServiceImpl implements ReportBaseService {
 
 	@Override
 	public byte[] doExportCsv(List<UploadRequest> listData) throws Exception {
-		String rootFileUrl = env.getRequiredProperty(REPORT_DIRECTORY);
 		String tempPath = env.getRequiredProperty(TEMP_DIRECTORY);
 		File file = File.createTempFile(TMP_REPORT_FILE, ".csv", new File(tempPath));
 		byte[] byteReport = null;
@@ -145,7 +144,7 @@ public class ReportBaseServiceImpl implements ReportBaseService {
                                              CSVWriter.DEFAULT_LINE_END); 
       
             // create a List which contains String array 
-            List<String[]> data = new ArrayList<String[]>(); 
+            List<String[]> data = new ArrayList<>(); 
             data.add(new String[] { "Wilayah", "Tanggal", "Gambar" });
             
             for (UploadRequest obj : listData) {

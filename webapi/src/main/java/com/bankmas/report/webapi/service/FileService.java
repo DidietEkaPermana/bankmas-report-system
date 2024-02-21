@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.bankmas.report.webapi.dto.FileCreateUpdateResponse;
+import com.bankmas.report.webapi.dto.FileDescription;
 import com.bankmas.report.webapi.dto.FileListResponse;
 import com.bankmas.report.webapi.dto.FileResponse;
 import com.bankmas.report.webapi.dto.PagingRequest;
@@ -20,5 +21,6 @@ public interface FileService {
 	public FileListResponse findByCriteria(PagingRequest pagingRequest) throws Exception;
 	public void updateFile(String id, String status);
 	public FileCreateUpdateResponse uploadAndSend(MultipartFile[] files) throws IOException;
+	public FileCreateUpdateResponse uploadByType(MultipartFile[] files, String fileDescription) throws IOException, NoSuchAlgorithmException, Exception;
 	public void readJsonFile(String id) throws IOException;
 }
