@@ -34,7 +34,6 @@ import lombok.SneakyThrows;
 @Service
 public class FileCsvServiceImpl implements FileCsvService {
 	
-	private static final String REPORT_DIRECTORY = "report.directory";
 	private static final String TEMP_DIRECTORY = "export.directory";
 	private static final String TMP_REPORT_FILE = "tmpReportFile";
 	private static final String NO_DATA_TO_EXPORT_ERROR = "No Data to Export";
@@ -50,9 +49,8 @@ public class FileCsvServiceImpl implements FileCsvService {
 	
 	
 	@Transactional(transactionManager = "transactionManager")
-    @SneakyThrows
     @Override
-	public void updateFile(String id, String status) {
+	public void updateFile(String id, String status) throws Exception {
 		Optional<MFile> findIdExistingFile = fileRepository.findById(id);
 		Timestamp now = DateUtil.getTodayDate();
 		
@@ -61,6 +59,10 @@ public class FileCsvServiceImpl implements FileCsvService {
         	findIdExistingFile.get().setUpdatedAt(now);;
 
         	fileRepository.save(findIdExistingFile.get());
+        }
+        else {
+        	throw new Exception(
+		              "file with id" + id + " not exist");
         }
 	}
 
@@ -84,8 +86,8 @@ public class FileCsvServiceImpl implements FileCsvService {
 			}
 		}
 		catch (IOException e) {
-			//logger.error("Can not read json file");
 			e.printStackTrace();
+			throw new IOException("Can not read json file");
 		}
 		
 		return objects;
@@ -128,6 +130,7 @@ public class FileCsvServiceImpl implements FileCsvService {
         } catch (Exception e) {            
         	//logger.error("Can not export file csv");
         	e.printStackTrace();
+        	throw new Exception(NO_DATA_TO_EXPORT_ERROR);
 		}
 		
 		return file;
@@ -157,6 +160,7 @@ public class FileCsvServiceImpl implements FileCsvService {
 		catch (IOException|NoSuchAlgorithmException e) {
 			//logger.error("Can not update file csv");
 			e.printStackTrace();
+			throw new IOException("Can not update file csv");
 		}
 		
         

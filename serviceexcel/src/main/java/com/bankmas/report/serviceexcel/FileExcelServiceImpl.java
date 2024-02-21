@@ -55,9 +55,8 @@ public class FileExcelServiceImpl implements FileExcelService {
 	private Environment env;
 	
 	@Transactional(transactionManager = "transactionManager")
-    @SneakyThrows
     @Override
-	public void updateFile(String id, String status) {
+	public void updateFile(String id, String status) throws Exception {
 		Optional<MFile> findIdExistingFile = fileRepository.findById(id);
 		Timestamp now = DateUtil.getTodayDate();
 		
@@ -66,6 +65,10 @@ public class FileExcelServiceImpl implements FileExcelService {
         	findIdExistingFile.get().setUpdatedAt(now);;
 
         	fileRepository.save(findIdExistingFile.get());
+        }
+        else {
+        	throw new Exception(
+		              "file with id" + id + " not exist");
         }
 	}
 
@@ -93,6 +96,7 @@ public class FileExcelServiceImpl implements FileExcelService {
 		catch (IOException|NoSuchAlgorithmException e) {
 			//logger.error("Can not update file csv");
 			e.printStackTrace();
+			throw new IOException("Can not update file xlsx");
 		}
 		
         
@@ -120,6 +124,7 @@ public class FileExcelServiceImpl implements FileExcelService {
 		catch (IOException e) {
 			//logger.error("Can not read json file");
 			e.printStackTrace();
+			throw new IOException("Can not read json file");
 		}
 		
 		return objects;

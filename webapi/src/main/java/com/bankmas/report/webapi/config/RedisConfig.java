@@ -3,10 +3,6 @@ package com.bankmas.report.webapi.config;
 import java.io.Serializable;
 import java.time.Duration;
 
-import javax.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.cache.CacheManager;
@@ -18,25 +14,15 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import redis.clients.jedis.Jedis;
-
 @Configuration
 @AutoConfigureAfter(RedisAutoConfiguration.class)
 @EnableCaching
-@EnableRedisRepositories
 public class RedisConfig {
 
-	@Value("${spring.redis.host}")
-	private String redisHost;
-
-	@Value("${spring.redis.port}")
-	private int redisPort;
-	
 	@Bean
 	public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
 		RedisTemplate<String, Serializable> template = new RedisTemplate<>();
@@ -50,6 +36,7 @@ public class RedisConfig {
 	public CacheManager cacheManager(RedisConnectionFactory factory) {
 		RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
 		RedisCacheConfiguration redisCacheConfiguration = config
+				//.entryTtl(Duration.ofMinutes(10))
 				.serializeKeysWith(
 						RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
 				.serializeValuesWith(RedisSerializationContext.SerializationPair
@@ -58,12 +45,4 @@ public class RedisConfig {
 				.build();
 		return redisCacheManager;
 	}
-
-//	@PostConstruct
-//	public void clearCache() {
-//		System.out.println("In Clear Cache");
-//		Jedis jedis = new Jedis(redisHost, redisPort, 1000);
-//		jedis.flushAll();
-//		jedis.close();
-//	}
 }

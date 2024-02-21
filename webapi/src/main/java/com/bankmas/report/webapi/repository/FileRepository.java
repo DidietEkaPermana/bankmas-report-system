@@ -27,6 +27,11 @@ public interface FileRepository extends JpaRepository<MFile, String> {
 			+ " WHERE (p.status = :status OR :status IS NULL) AND p.id = :id ")
 	public List<MFile> findByIdAndStatus(@Param("status") String status, @Param("id") String id);
 	
+	@Query(value = "SELECT p "
+			+ " FROM MFile p "
+			+ " WHERE (p.checksumFile2 = :checksumFile2) ")
+	public List<MFile> findByChecksumFile2(@Param("checksumFile2") String checksumFile2);
+	
 	@Query(value = "SELECT NEW com.bankmas.report.webapi.dto.FileResponse (p.id, p.fileName, p.status, p.createdAt, p.updatedAt) "
 			+ " FROM MFile p "
 			+ " WHERE (p.status = :status OR :status IS NULL) ")

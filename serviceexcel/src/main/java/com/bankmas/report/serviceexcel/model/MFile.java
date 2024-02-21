@@ -66,6 +66,10 @@ public class MFile {
     
     @Column(name = "path", nullable = true, length = 200)
     private String path;
+    
+    //checksum file json
+    @Column(name = "checksum_file_2", nullable = true, length = 200)
+    private String checksumFile2;
 
     public MFile() {
     }
