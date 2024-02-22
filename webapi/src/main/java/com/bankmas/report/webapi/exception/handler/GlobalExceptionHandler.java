@@ -1,5 +1,6 @@
 package com.bankmas.report.webapi.exception.handler;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.message = ex.getMessage();
 
-        return ResponseEntity.badRequest().body(errorResponse);
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(errorResponse);
     }
 }

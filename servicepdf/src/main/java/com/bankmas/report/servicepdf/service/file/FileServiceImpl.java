@@ -2,21 +2,20 @@ package com.bankmas.report.servicepdf.service.file;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.Map.Entry;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -25,6 +24,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.bankmas.report.servicepdf.config.StorageProperties;
@@ -32,17 +32,13 @@ import com.bankmas.report.servicepdf.dto.kafka.MessageKafkaUploadFile;
 import com.bankmas.report.servicepdf.exception.ValidationException;
 import com.bankmas.report.servicepdf.model.EnumUploadFileStatus;
 import com.bankmas.report.servicepdf.service.kafka.KafkaProducer;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
-import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Header;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
 
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +49,9 @@ public class FileServiceImpl implements FileService{
 
     @Autowired
     KafkaProducer kafkaProducer;
+
+    @Autowired
+    RedisTemplate<String, Serializable> redisTemplate;;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -172,8 +171,10 @@ public class FileServiceImpl implements FileService{
             if (listMap.size() == 0)
                 return;
 
+            //get from field jsons
+            Map<String, Object> fieldJsons = getFieldJsons(message);
 
-            Set<String> headers = message.fieldJsons.keySet();
+            Set<String> headers = fieldJsons.keySet();
             
             // Generate a unique file name for the PDF document.
             String fileName = message.fileName + ".pdf";
@@ -198,12 +199,12 @@ public class FileServiceImpl implements FileService{
                         throw new ValidationException("INVALID_HEADER");
                     }
                     
-                    for(String header : headers){
-                        if(message.fieldJsons.get(header).equals("TEXT")){
-                            pTable.addCell(map.get(header).toString());
+                    for(Entry<String, Object> field : fieldJsons.entrySet()){
+                        if(field.getValue().equals("TEXT")){
+                            pTable.addCell(map.get(field.getKey()).toString());
                         } else{
                             // If the header is "gambar", download the image using the downloadImage method and add it to the table as an image cell.
-                            byte[] downloadImage = downloadImage(map.get(header).toString());
+                            byte[] downloadImage = downloadImage(map.get(field.getKey()).toString());
                             Image image = Image.getInstance(downloadImage);
                             PdfPCell imageCell = new PdfPCell(image, true);
                             pTable.addCell(imageCell);
@@ -229,6 +230,17 @@ public class FileServiceImpl implements FileService{
             // Update the file status to "ERROR" using the KafkaProducer.
             kafkaProducer.updateStatusFile(message.id, EnumUploadFileStatus.ERROR, null, null, e.getMessage());
         }
+    }
+
+    private Map<String, Object> getFieldJsons(MessageKafkaUploadFile message)
+            throws JsonProcessingException, JsonMappingException {
+        Serializable serializable = redisTemplate.opsForValue().get("reportTypeFieldJsons::" + message.getReportTypeId());
+        List<Map<String,Object>> listObjects = objectMapper.readValue(serializable.toString(), List.class);
+        LinkedHashMap<String, Object> fieldJsons = new LinkedHashMap<>();
+        listObjects.stream().forEach(
+            e -> fieldJsons.put(e.get("name").toString(), e.get("type"))
+        );
+        return fieldJsons;
     }
 
     @Override

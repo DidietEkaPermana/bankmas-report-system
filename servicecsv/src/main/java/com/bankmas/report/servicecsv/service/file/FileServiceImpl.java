@@ -5,17 +5,22 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.bankmas.report.servicecsv.config.StorageProperties;
@@ -23,14 +28,22 @@ import com.bankmas.report.servicecsv.dto.kafka.MessageKafkaUploadFile;
 import com.bankmas.report.servicecsv.exception.ValidationException;
 import com.bankmas.report.servicecsv.model.EnumUploadFileStatus;
 import com.bankmas.report.servicecsv.service.kafka.KafkaProducer;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class FileServiceImpl implements FileService{
 
     @Autowired
     KafkaProducer kafkaProducer;
+
+    @Autowired
+    RedisTemplate<String, Serializable> redisTemplate;;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -54,7 +67,10 @@ public class FileServiceImpl implements FileService{
             if(listMap.size() == 0)
                 return;
 
-            Set<String> headers = message.fieldJsons.keySet();
+                //get from field jsons
+            Map<String, Object> fieldJsons = getFieldJsons(message);
+
+            Set<String> headers = fieldJsons.keySet();
 
             String fileName = message.fileName + ".csv";
 
@@ -72,8 +88,8 @@ public class FileServiceImpl implements FileService{
                 }
                 String[] values = new String[headers.size()];
                 int i = 0;
-                for(String header : headers) {
-                    values[i] = map.get(header).toString();
+                for(Entry<String, Object> field : fieldJsons.entrySet()) {
+                    values[i] = map.get(field.getKey()).toString();
                     i++;
                 }
                 writer.writeNext(values);
@@ -91,6 +107,17 @@ public class FileServiceImpl implements FileService{
             
 		
 	}
+
+    private Map<String, Object> getFieldJsons(MessageKafkaUploadFile message)
+            throws JsonProcessingException, JsonMappingException {
+        Serializable serializable = redisTemplate.opsForValue().get("reportTypeFieldJsons::" + message.getReportTypeId());
+        List<Map<String,Object>> listObjects = objectMapper.readValue(serializable.toString(), List.class);
+        LinkedHashMap<String, Object> fieldJsons = new LinkedHashMap<>();
+        listObjects.stream().forEachOrdered(
+            e -> fieldJsons.put(e.get("name").toString(), e.get("type"))
+        );
+        return fieldJsons;
+    }
 
     @Override
     public byte[] downloadFile(String fileName) throws IOException {

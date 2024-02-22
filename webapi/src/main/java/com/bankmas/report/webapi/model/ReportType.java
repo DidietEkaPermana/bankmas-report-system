@@ -38,6 +38,9 @@ public class ReportType {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
+    @Column(name = "template_file", length = 255)
+    private String templateFile;
+
     @CreationTimestamp
     @Column(name = "created_datetime", nullable = false)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'")

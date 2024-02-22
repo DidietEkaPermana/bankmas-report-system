@@ -26,7 +26,6 @@ import com.bankmas.report.webapi.dto.file.SaveFileRequest;
 import com.bankmas.report.webapi.dto.file.SaveFileResponse;
 import com.bankmas.report.webapi.exception.ValidationException;
 import com.bankmas.report.webapi.model.EnumUploadFileStatus;
-import com.bankmas.report.webapi.model.UploadFile;
 import com.bankmas.report.webapi.service.file.FileService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,7 +60,7 @@ public class FileController {
         return ResponseEntity.ok(fileService.getFile(id));
     }
 
-    @GetMapping(value = "/download/{id}",produces = "application/octet-stream")
+    @GetMapping(value = "/download/{id}", produces = {"application/octet-stream", "application/json"})
     @Operation(summary = "Download Converted File", description = "Download Successed Converted File with Id")
     public ResponseEntity<byte[]> downloadFile(@PathVariable("id") String id){
         return fileService.downloadFile(id);

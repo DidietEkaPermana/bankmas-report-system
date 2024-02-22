@@ -43,7 +43,6 @@ import com.bankmas.report.webapi.exception.ValidationException;
 import com.bankmas.report.webapi.model.EnumDocumentFileType;
 import com.bankmas.report.webapi.model.EnumUploadFileStatus;
 import com.bankmas.report.webapi.model.ReportType;
-import com.bankmas.report.webapi.model.ReportTypeFieldJson;
 import com.bankmas.report.webapi.model.UploadFile;
 import com.bankmas.report.webapi.repository.ReportTypeRepository;
 import com.bankmas.report.webapi.repository.UploadFileRepository;
@@ -59,9 +58,6 @@ public class FileServiceImpl implements FileService {
 
     @Autowired 
     ReportTypeRepository reportTypeRepository;
-
-    @Autowired
-    ReportTypeService reportTypeService;
 
     @Autowired
     KafkaProducer kafkaProducer;
@@ -99,10 +95,7 @@ public class FileServiceImpl implements FileService {
 
                 UploadFile uploadFile = storeFileToDatabase(request.getDocumentFileType(), request.getReportType(), checksum, fileName, multipart.getOriginalFilename());
 
-                List<DetailReportTypeResponse.JsonField> fieldJsons = reportTypeService.getReportTypeFieldJsons(uploadFile.getReportType().getId());
-
-
-                kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName, fieldJsons);
+                kafkaProducer.sendUploadFile(request.getDocumentFileType().name(), uploadFile.getId(), fileName, uploadFile.getReportType().getId());
 
                 result.add(SaveFileResponse.builder().fileName(uploadFile.getOriginalFileName()).status("SUCCESS").reason(null).build());
             } catch(Exception e){

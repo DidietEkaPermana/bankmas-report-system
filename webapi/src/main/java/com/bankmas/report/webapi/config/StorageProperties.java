@@ -12,6 +12,7 @@ public class StorageProperties {
 	private static String csvLocation = "C:\\Users\\Ananda Dana Pratama\\Developer\\Kerja\\BANKMAS\\bankmas-report-system\\document-dir\\csv\\";
 	private static String pdfLocation = "C:\\Users\\Ananda Dana Pratama\\Developer\\Kerja\\BANKMAS\\bankmas-report-system\\document-dir\\pdf\\";
 	private static String excelLocation = "C:\\Users\\Ananda Dana Pratama\\Developer\\Kerja\\BANKMAS\\bankmas-report-system\\document-dir\\excel\\";
+	private static String templateLocation = "C:\\Users\\Ananda Dana Pratama\\Developer\\Kerja\\BANKMAS\\bankmas-report-system\\document-dir\\template\\";
 	
 	public static String rootLocation() {
 		return rootLocation;
@@ -27,5 +28,8 @@ public class StorageProperties {
 	}
 	public static String getExcelLocation() {
 		return excelLocation;
+	}
+	public static String getTemplateLocation() {
+		return templateLocation;
 	}
 }

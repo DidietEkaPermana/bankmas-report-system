@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class MessageKafkaUploadFile {
     public String id;
     public String fileName;
-    public Map<String, String> fieldJsons;
+    public String reportTypeId;
 }

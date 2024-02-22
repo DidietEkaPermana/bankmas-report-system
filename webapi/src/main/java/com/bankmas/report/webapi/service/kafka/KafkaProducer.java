@@ -1,14 +1,10 @@
 package com.bankmas.report.webapi.service.kafka;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import com.bankmas.report.webapi.dto.file.DetailReportTypeResponse;
 import com.bankmas.report.webapi.dto.kafka.MessageKafkaUploadFile;
-import com.bankmas.report.webapi.model.ReportTypeFieldJson;
 
 @Service
 public class KafkaProducer {
@@ -20,8 +16,8 @@ public class KafkaProducer {
     @Autowired
     private KafkaTemplate<String, MessageKafkaUploadFile> kafkaTemplate;
 
-    public void sendUploadFile(String documentFileType, String id, String fileName,  List<DetailReportTypeResponse.JsonField> fieldJsons) {
-        MessageKafkaUploadFile message = new MessageKafkaUploadFile(id, fileName, fieldJsons);
+    public void sendUploadFile(String documentFileType, String id, String fileName, String reportTypeId) {
+        MessageKafkaUploadFile message = new MessageKafkaUploadFile(id, fileName, reportTypeId);
         switch (documentFileType) {
             case "EXCEL":
                 kafkaTemplate.send(EXCEL_TOPIC, message);
