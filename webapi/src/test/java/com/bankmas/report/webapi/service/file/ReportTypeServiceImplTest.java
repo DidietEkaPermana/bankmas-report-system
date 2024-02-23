@@ -165,7 +165,7 @@ public class ReportTypeServiceImplTest {
 		when(reportTypeFieldJsonRepository.save(any(ReportTypeFieldJson.class))).thenReturn(reportTypeFieldJson);
         doNothing().when(reportTypeFieldJsonRepository).delete(any());;
         when(reportTypeRepository.findById(eq("valid_id"))).thenReturn(Optional.of(reportType));
-        when(reportTypeRepository.findFirstByNameAndIdIsNot(anyString(), anyString())).thenReturn(Optional.empty());
+        when(reportTypeRepository.findFirstByNameAndIdNot(anyString(), anyString())).thenReturn(Optional.empty());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         doNothing().when(valueOperations).set(anyString(), anyString());
 

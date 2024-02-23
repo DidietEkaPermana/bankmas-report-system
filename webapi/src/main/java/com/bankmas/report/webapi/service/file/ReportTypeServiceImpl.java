@@ -137,9 +137,9 @@ public class ReportTypeServiceImpl implements ReportTypeService {
         ReportType reportType = reportTypeRepository.findById(id)
             .orElseThrow(() -> new ValidationException("DATA_NOT_EXISTS"));
         
-        Optional<ReportType> optional = reportTypeRepository.findFirstByNameAndIdIsNot(request.getName().toUpperCase(Locale.ROOT), id);
+        Optional<ReportType> optional = reportTypeRepository.findFirstByNameAndIdNot(request.getName().toUpperCase(Locale.ROOT), reportType.getId());
         if(optional.isPresent())
-            new ValidationException("NAME_ALREADY_EXISTS");
+            throw new ValidationException("NAME_ALREADY_EXISTS");
 
         reportType.setName(request.getName().toUpperCase(Locale.ROOT));
         reportTypeRepository.save(reportType);
