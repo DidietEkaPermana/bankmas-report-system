@@ -14,6 +14,7 @@ public class ListFileResponse {
     private String reportType;
     private String status;
     private String documentType;
+    private String originalFileName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime processDatetime;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
@@ -29,6 +30,7 @@ public class ListFileResponse {
         this.reportType = uploadFile.getReportType().getName();
         this.status = uploadFile.getStatus().toString();
         this.documentType = uploadFile.getDocumentFileType().toString();
+        this.originalFileName = uploadFile.getOriginalFileName();
         this.processDatetime = uploadFile.getProcessDatetime();
         this.finishDatetime = uploadFile.getFinishDatetime();
     }

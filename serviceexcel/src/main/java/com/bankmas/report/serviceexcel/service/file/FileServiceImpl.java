@@ -110,7 +110,7 @@ public class FileServiceImpl implements FileService {
                     throw new ValidationException("INVALID_HEADER");
                 }
 
-                XSSFRow row = sheet.createRow(i);
+                XSSFRow row = sheet.createRow(i+1);
                 int j = 0;
                 for(Entry<String, Object> field : fieldJsons.entrySet()) {
                     if(field.getValue().equals("TEXT")){
