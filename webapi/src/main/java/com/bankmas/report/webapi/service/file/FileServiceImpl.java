@@ -108,7 +108,7 @@ public class FileServiceImpl implements FileService {
         return new DataResponse<List<SaveFileResponse>>("SUCCESS", result);
     }
 
-    private StringBuilder getLineFromMultipart(MultipartFile multipartFile) throws IOException {
+    public StringBuilder getLineFromMultipart(MultipartFile multipartFile) throws IOException {
         InputStream inputStream = multipartFile.getInputStream();
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -123,7 +123,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Transactional(transactionManager = "transactionManager")
-    private UploadFile storeFileToDatabase(
+    public UploadFile storeFileToDatabase(
             EnumDocumentFileType enumDocumentFileType, String reportTypeName, 
             String checksum, String fileName, String originalFilename) {
         
@@ -144,7 +144,7 @@ public class FileServiceImpl implements FileService {
         return uploadFile;
     }
 
-    private void storeFileToStorage(String lines, String fileName) throws IOException {
+    public void storeFileToStorage(String lines, String fileName) throws IOException {
         String path = StorageProperties.getUploadLocation() + fileName + ".json";
         File file = new File(path);
         FileWriter fileWriter = new FileWriter(file);
