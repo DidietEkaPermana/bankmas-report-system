@@ -335,7 +335,7 @@ public class FileServiceImpl implements FileService {
 			//monthly, weekly, biweekly
 			String type = fd.getType();
 			
-			List<MFileCategory> mfc = fileCategoryService.getByCategory(type);
+			List<MFileCategory> mfc = fileCategoryService.getByCategory(type.toUpperCase());
 			
 			if (mfc.isEmpty()) {
 				throw new Exception("Category : " + type + " not found");
@@ -387,7 +387,7 @@ public class FileServiceImpl implements FileService {
 
 			fileList.add(dtoCsv);
 			
-			//kafkaProducerService.sendMessage(topic, saveFile.getId());
+			kafkaProducerService.sendMessage(topic, saveFile.getId());
 			//kafkaProducerService.sendMessage(topic, "not-found");
         }
 		

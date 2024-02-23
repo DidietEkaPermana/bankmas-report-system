@@ -1,5 +1,6 @@
 package com.bankmas.report.webapi.service;
 
+import java.io.IOException;
 import java.util.List;
 
 import com.bankmas.report.webapi.dto.FileCategoryDTO;
@@ -13,5 +14,6 @@ public interface FileCategoryService {
 	public List<MFileCategory> getAll();
 	public MFileCategoryDTO update(FileCategoryDTO fileCategory) throws Exception, DataNotFoundException;
 	public void delete(String id);
+	public byte[] download(String id) throws IOException, Exception;
 	public List<MFileCategory> getByCategory(String category);
 }
