@@ -8,6 +8,8 @@ import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
@@ -70,6 +72,10 @@ public class MFile {
     //checksum file json
     @Column(name = "checksum_file_2", nullable = true, length = 200)
     private String checksumFile2;
+    
+    @ManyToOne
+	@JoinColumn(name="file_category_id", referencedColumnName = "id")
+	private MFileCategory mFileCategory;
 
     public MFile() {
     }
