@@ -15,6 +15,8 @@ public class FileUploadResponse {
     private String statusProses;
     private String tipeReport;
     private String checksumFile;
+    private String jsonDataField;
     private Timestamp tanggalProses;
     private Timestamp tanggalSelesaiProses;
+    
 }

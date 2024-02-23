@@ -3,8 +3,10 @@ package com.bankmas.report.webapi.services;
 import com.bankmas.report.webapi.dto.FileUploadCreateUpdateResponse;
 import com.bankmas.report.webapi.dto.FileUploadRequest;
 import com.bankmas.report.webapi.dto.FileUploadResponse;
+import com.bankmas.report.webapi.model.MFileJenisReport;
 import com.bankmas.report.webapi.model.MFileUpload;
 import com.bankmas.report.webapi.model.TopicEnum;
+import com.bankmas.report.webapi.repository.FileJenisReportRepository;
 import com.bankmas.report.webapi.repository.FileUploadRepository;
 import com.bankmas.report.webapi.storage.StorageService;
 
@@ -14,10 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +28,6 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +44,7 @@ import javax.sql.DataSource;
 public class FileUploadServiceImpl {
 
 	private final StorageService storageService;
-    private final boolean filterChecksum = true; 
+    private final boolean filterChecksum = false; 
     
     @Autowired
     private KafkaProducerService kafkaProducerService;
@@ -55,6 +53,7 @@ public class FileUploadServiceImpl {
     DataSource dataSource;
 
     private FileUploadRepository fileUploadRepository;
+    private FileJenisReportRepository fileJenisReportRepository;
 
     public FileUploadCreateUpdateResponse createFileUpload(FileUploadRequest request) {
 
@@ -75,14 +74,23 @@ public class FileUploadServiceImpl {
 					.build();
     }
 
-    public String uploadFile(TopicEnum topicEnum, MultipartFile file) {
+    public String uploadFile(TopicEnum topicEnum, String jenisReport, MultipartFile file) {
         try {
+            
+            Optional<MFileJenisReport> fileJenisReportOpt = fileJenisReportRepository.findById(jenisReport);
+
+            if (fileJenisReportOpt.isEmpty()) {
+                return "Jenis Report " +jenisReport+ " not found";
+            }
+            MFileJenisReport fileJenisReport = fileJenisReportOpt.get();
+
             String extension = ".csv";
             if(topicEnum.equals(TopicEnum.EXCEL_FILE)){
                 extension = ".xlsx";
             } else if(topicEnum.equals(TopicEnum.PDF_FILE)){
                 extension = ".pdf";
             }
+
             String uuid = UUID.randomUUID().toString();
             String fileName = uuid + ".json";
             storageService.store(fileName, file);
@@ -100,7 +108,7 @@ public class FileUploadServiceImpl {
             MFileUpload requestDataFromTableToRequest = MFileUpload.builder()
                 .id(uuid)
                 .fileName(fileName)
-                .jenisReport(extension)
+                .jenisReport(fileJenisReport.getId())
                 .statusProses("waiting")
                 .tipeReport(extension)
                 .checksumFile(checksum)
@@ -111,10 +119,11 @@ public class FileUploadServiceImpl {
             FileUploadResponse fileUploadResponse = FileUploadResponse.builder()
                 .id(savedToDatabase.getId())
                 .fileName(savedToDatabase.getFileName())
-                .jenisReport(savedToDatabase.getJenisReport())
+                .jenisReport(fileJenisReport.getId())
                 .statusProses(savedToDatabase.getStatusProses())
                 .tipeReport(savedToDatabase.getTipeReport())
                 .checksumFile(savedToDatabase.getChecksumFile())
+                .jsonDataField(fileJenisReport.getJsonDataField())
                 .tanggalProses(savedToDatabase.getTanggalProses())
                 .tanggalSelesaiProses(savedToDatabase.getTanggalSelesaiProses())
                 .build();
@@ -230,7 +239,6 @@ public class FileUploadServiceImpl {
             throw new IllegalStateException("file upload with id" + id + " not exist");
         }
         MFileUpload mFileUpload = object.get();
-        log.warn("FILENAMEEEEE :" + mFileUpload.getFileName());
         String filename = mFileUpload.getFileName();
         String reportFilename = filename.replace(".json", mFileUpload.getTipeReport());
         storageService.delete(filename);

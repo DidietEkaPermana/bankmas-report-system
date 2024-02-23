@@ -1,4 +1,4 @@
-package com.bankmas.report.servicepdf.dto;
+package com.bankmas.report.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,11 +7,11 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageStatusKafka {
+public class MessageKafka {
     private Long messageId;
     private Long generateDate;
     private String dataId;
-    private String statusProses;
-    private Long tanggalProses;
-    private Long tanggalSelesaiProses;
+    private String checksum;
+    private String fileName;
+    private String jenis;
 }

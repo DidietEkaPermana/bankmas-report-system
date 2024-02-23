@@ -1,6 +1,6 @@
 package com.bankmas.report.servicepdf.services;
 
-import com.bankmas.report.servicepdf.dto.MessageStatusKafka;
+import com.bankmas.report.dto.MessageStatusKafka;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;

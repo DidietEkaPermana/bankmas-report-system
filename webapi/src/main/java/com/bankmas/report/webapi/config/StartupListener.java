@@ -8,17 +8,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class StartupListener implements ApplicationListener<ContextRefreshedEvent> {
-
-	@Autowired
-	private CacheManager cacheManager;
 	
 	@Override
 	public final void onApplicationEvent(ContextRefreshedEvent event) {
 		System.out.println("WEB API : SUDAH JALAN #########");
-		cacheManager.getCacheNames().parallelStream().forEach(n -> {
-			// cacheManager.getCache(n).clear()	
-			System.out.println(n);
-		});
 	}
 
 }

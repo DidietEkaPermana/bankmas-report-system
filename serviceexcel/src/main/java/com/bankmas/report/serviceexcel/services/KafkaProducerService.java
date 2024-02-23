@@ -1,6 +1,6 @@
 package com.bankmas.report.serviceexcel.services;
 
-import com.bankmas.report.serviceexcel.dto.MessageStatusKafka;
+import com.bankmas.report.dto.MessageStatusKafka;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;

@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.bankmas.report.webapi.dto.MessageStatusKafka;
+import com.bankmas.report.dto.MessageStatusKafka;
 import com.bankmas.report.webapi.model.MFileUpload;
 import com.bankmas.report.webapi.repository.FileUploadRepository;
 import lombok.AllArgsConstructor;

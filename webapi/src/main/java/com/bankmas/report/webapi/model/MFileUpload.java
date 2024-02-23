@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.*;
 import java.sql.Timestamp;
 
@@ -23,7 +24,7 @@ public class MFileUpload {
     @Column(name = "file_name", nullable = false, length = 225)
     private String fileName;
 
-    @Column(name = "jenis_report", nullable = false, length = 20)
+    @Column(name = "jenis_report", nullable = false, length = 225)
     private String jenisReport;
 
     @Column(name = "status_proses", nullable = false, length = 20)
@@ -56,6 +57,7 @@ public class MFileUpload {
         this.tanggalSelesaiProses = tanggalSelesaiProses;
     }
 
+    
     
 
 }

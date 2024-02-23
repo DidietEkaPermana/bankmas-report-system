@@ -17,12 +17,6 @@ public class FileJenisReportRequest {
     @Size(max = 64, message = "maksimal namaReport 100 karakter")
     private String namaReport;
 
-    @NotNull(message = "The templateFile is required.")
-    @NotBlank(message = "The templateFile cannot blank.")
-    @Size(min = 2, message = "minimal templateFile 2 karakter")
-    @Size(max = 200, message = "maksimal templateFile 100 karakter")
-    private String templateFile;
-
     @NotNull(message = "The jsonDataField is required.")
     @NotBlank(message = "The jsonDataField cannot blank.")
     @Size(min = 2, message = "minimal jsonDataField 2 karakter")

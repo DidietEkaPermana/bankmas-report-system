@@ -10,7 +10,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.bankmas.report.servicecsv.dto.MessageKafka;
+import com.bankmas.report.dto.MessageKafka;
 
 @Service
 public class KafkaConsumerService {

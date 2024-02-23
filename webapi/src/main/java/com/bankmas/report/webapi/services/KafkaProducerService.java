@@ -5,15 +5,13 @@ import com.bankmas.report.webapi.dto.FileUploadResponse;
 // import java.util.ArrayList;
 // import java.util.List;
 
-import com.bankmas.report.webapi.dto.MessageKafka;
-import com.bankmas.report.webapi.model.MFileUpload;
+import com.bankmas.report.dto.MessageKafka;
 import com.bankmas.report.webapi.model.TopicEnum;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -30,7 +28,7 @@ public class KafkaProducerService {
     public MessageKafka produceMessage(TopicEnum topic, FileUploadResponse n){
 
         long start = System.currentTimeMillis();
-        MessageKafka kafka = new MessageKafka(start, start, n.getId(), n.getChecksumFile(), n.getFileName());
+        MessageKafka kafka = new MessageKafka(start, start, n.getId(), n.getChecksumFile(), n.getFileName(), n.getJenisReport());
         this.kafkaTemplate.send(topic.name(), kafka);
         return kafka;
     }
@@ -43,7 +41,7 @@ public class KafkaProducerService {
             return topicStr + " not found";
         }
         long start = System.currentTimeMillis();
-        MessageKafka kafka = new MessageKafka(start, start, id, null);
+        MessageKafka kafka = new MessageKafka(start, start, id, null, "", "");
         this.kafkaTemplate.send(topic.name(), kafka);
         return id;
     }

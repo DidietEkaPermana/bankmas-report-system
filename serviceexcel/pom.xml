@@ -90,6 +90,14 @@
         <artifactId>poi-ooxml</artifactId>
         <version>5.1.0</version>
       </dependency>
+      <dependency>
+        <groupId>com.bankmas.report.system</groupId>
+        <artifactId>bankmas-report-system</artifactId>
+        <version>1.0.0</version>
+        <scope>system</scope>
+    		<systemPath>${project.basedir}/../bankmas-report-system/target/bankmas-report-system-1.0.0.jar</systemPath>
+		</dependency>
+
     </dependencies>
 
     <build>

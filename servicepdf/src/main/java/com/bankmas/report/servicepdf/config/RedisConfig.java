@@ -1,4 +1,4 @@
-package com.bankmas.report.webapi.config;
+package com.bankmas.report.servicepdf.config;
 
 import java.io.Serializable;
 import java.time.Duration;

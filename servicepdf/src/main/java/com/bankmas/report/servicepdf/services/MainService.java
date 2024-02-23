@@ -11,6 +11,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -26,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.bankmas.report.servicepdf.dto.FileData;
-import com.bankmas.report.servicepdf.dto.MessageKafka;
+import com.bankmas.report.dto.FileJenisReportResponse;
+import com.bankmas.report.dto.MessageKafka;
 import com.bankmas.report.servicepdf.storage.StorageService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +43,9 @@ public class MainService {
 
     @Autowired
 	private KafkaProducerService kafkaProducerService;
+    
+    @Autowired
+	private FileJenisReportCacheService fileJenisReportCacheService;
 
 	@Async("taskExecutor")
     public String process(MessageKafka message) {
@@ -57,9 +61,21 @@ public class MainService {
 			String filename = message.getFileName();
 			logger.info("***** : filename : " + filename);
 			Path path = storageService.load(filename);
-			List<FileData> list = readJsonFile(path);
 			String newFilename = path.toAbsolutePath().toString().replace(".json", ".pdf");
-			generatePdfFile(list, newFilename);
+            
+			List<Map<String, String>> list = readJsonFile(path);
+			List<FileJenisReportResponse> listCache = fileJenisReportCacheService.listFileJenisReport();
+			FileJenisReportResponse fileJenisReportResponse = fileJenisReportCacheService.findById(message.getJenis(), listCache);
+
+			if(fileJenisReportResponse == null){
+				now = System.currentTimeMillis();
+				logger.error("File jenis report not found from cache");
+				kafkaProducerService.produceMessage(message.getDataId(), "error", null, now);
+				return "File jenis report not found from cache";
+			}
+
+			Map<String, String> dataField = readJsonDataField(fileJenisReportResponse.getJsonDataField());
+			generatePdfFile(list, dataField, newFilename);
 			now = System.currentTimeMillis();
 			kafkaProducerService.produceMessage(message.getDataId(), "finish", null, now);
 			status = "STATUS : finish";
@@ -75,14 +91,24 @@ public class MainService {
 	}
 
 	@Async("taskExecutor")
-	public List<FileData> readJsonFile(Path jsonFilePath) throws IOException {
+	public List<Map<String, String>> readJsonFile(Path jsonFilePath) throws IOException {
 		ObjectMapper objectMapper = new ObjectMapper();
-		return objectMapper.readValue(jsonFilePath.toFile(), new TypeReference<List<FileData>>() {});
+		return objectMapper.readValue(jsonFilePath.toFile(), new TypeReference<List<Map<String, String>>>() {});
 	}
 
 	@Async("taskExecutor")
-    public void generatePdfFile(List<FileData> dataList, String pdfFilePath) throws IOException {
+	public Map<String, String> readJsonDataField(String jsonField) throws IOException {
+		ObjectMapper objectMapper = new ObjectMapper();
+       	return objectMapper.readValue(jsonField, new TypeReference<Map<String, String>>() {});
+	}
+
+	@Async("taskExecutor")
+    public void generatePdfFile(List<Map<String, String>> dataList, Map<String, String> jsonField, String pdfFilePath) throws IOException {
         try (PDDocument document = new PDDocument()) {
+
+            // Get keys only as String[]
+		    String[] header = jsonField.keySet().toArray(new String[0]);
+
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
 
@@ -90,6 +116,7 @@ public class MainService {
             contentStream.setFont(PDType1Font.HELVETICA, 12);
 
             float startY = page.getMediaBox().getHeight() - 50; // Start Y position
+            
             float lineSpacing = 20; // Line spacing
 
             float max_image_size = 50;
@@ -97,39 +124,43 @@ public class MainService {
             int rowNum = 0;
             int size = dataList.size();
 
-            for (FileData data : dataList) {
+            float imageHeight_ = 0;
+            for (Map<String, String> data : dataList) {
                 
                 logger.info("PROCESS : " + rowNum + " of " + size);
                 float currentY = startY;
+                for (int i = 0; i < header.length; i++) {
+                    if(jsonField.get(header[i]).equals("image")){
+					    // download image here
+                        drawText(contentStream, header[i] + " : ", 50, currentY);
+                        currentY -= lineSpacing / 2;
+                        InputStream inputStream = new URL(data.get(header[i])).openStream();
 
-                // Draw Wilayah
-                drawText(contentStream,   "Wilayah : " + data.getWilayah(), 50, currentY);
-                currentY -= lineSpacing;
+                        PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, inputStreamToByteArray(inputStream), "image");
+                        float imageWidth = pdImage.getWidth();
+                        float imageHeight = pdImage.getHeight();
+                        imageHeight_ = imageHeight_ + imageHeight;
+        
+                        if(imageWidth > max_image_size) imageWidth = max_image_size;
+                        if(imageHeight > max_image_size) imageHeight = max_image_size;
+        
+                        contentStream.drawImage(pdImage, 50, currentY - imageHeight, imageWidth, imageHeight);
+                        currentY -= imageHeight + 10; // Adjust currentY
+                    } else {
+                        // print as text
+                        drawText(contentStream,   header[i] + " : " + data.get(header[i]) , 50, currentY);
+                        currentY -= lineSpacing;
+                    }
+                }
 
-                // Draw Tanggal
-                drawText(contentStream, "Tanggal : " + data.getTanggal(), 50, currentY);
-                currentY -= lineSpacing;
-
-                drawText(contentStream, "Gambar : ", 50, currentY);
-                currentY -= lineSpacing / 2;
-
-                InputStream inputStream = new URL(data.getGambar()).openStream();
-
-                PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, inputStreamToByteArray(inputStream), "image");
-                float imageWidth = pdImage.getWidth();
-                float imageHeight = pdImage.getHeight();
-
-                if(imageWidth > max_image_size) imageWidth = max_image_size;
-                if(imageHeight > max_image_size) imageHeight = max_image_size;
-
-                contentStream.drawImage(pdImage, 50, currentY - imageHeight, imageWidth, imageHeight);
-                currentY -= imageHeight + 10; // Adjust currentY
 
                 // Adjust startY for next entry
                 startY = currentY - 10;
 
                 // Check if new page is needed
-                if (startY <= (50 + imageHeight )) {
+                
+                if (startY <= (50 + max_image_size)) {
+                    imageHeight_ = 0;
                     contentStream.close();
                     page = new PDPage(PDRectangle.A4);
                     document.addPage(page);
